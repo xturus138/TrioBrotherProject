@@ -32,15 +32,13 @@ import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/PaginationControls";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress"; // Impor Progress
+import { Progress } from "@/components/ui/progress";
 
 interface User {
   id: string;
   name: string;
   created_at: string;
   pin: string;
-  // asumsi Anda menambahkan kuota penyimpanan di sini
-  // storage_quota_mb: number;
 }
 
 interface Asset {
@@ -80,9 +78,8 @@ interface GalleryViewProps {
   page: number;
   perPage: number;
   searchQuery?: string;
-  // asumsi Anda meneruskan data storage usage dari page.tsx
-  totalStorageUsedMB?: number;
-  storageQuotaMB?: number;
+  totalStorageUsedMB: number;
+  storageQuotaMB: number;
 }
 
 const FOLDERS_PER_PAGE = 5;
@@ -98,8 +95,8 @@ export function GalleryView({
   page,
   perPage,
   searchQuery,
-  totalStorageUsedMB = 0,
-  storageQuotaMB = 1024, // Contoh kuota 1 GB
+  totalStorageUsedMB,
+  storageQuotaMB,
 }: GalleryViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -155,7 +152,6 @@ export function GalleryView({
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <LoadingOverlay isLoading={isLoading} />
 
-      {/* Header */}
       <header className="border-b bg-white shadow-sm">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4">
@@ -184,7 +180,6 @@ export function GalleryView({
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
-          {/* Sidebar */}
           <aside className="lg:col-span-1">
             <div className="rounded-lg bg-white p-6 shadow-sm">
               <div className="mb-4 flex items-center justify-between">
@@ -297,26 +292,26 @@ export function GalleryView({
               )}
             </div>
 
-            {/* Storage Info Section */}
             <div className="mt-8 rounded-lg bg-white p-6 shadow-sm">
               <div className="flex items-center gap-3">
                 <HardDriveIcon className="h-5 w-5 text-indigo-600" />
-                <h3 className="text-lg font-semibold text-gray-900">Storage</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Total Storage
+                </h3>
               </div>
               <div className="mt-4">
                 <Progress value={usagePercentage} />
                 <p className="mt-2 text-sm text-gray-600">
-                  Used {totalStorageUsedMB.toFixed(2)} MB of{" "}
+                  Digunakan {totalStorageUsedMB.toFixed(2)} MB dari{" "}
                   {storageQuotaMB.toFixed(0)} MB
                 </p>
                 <p className="text-xs text-gray-500">
-                  You have {remainingStorageMB.toFixed(2)} MB remaining.
+                  Tersisa {remainingStorageMB.toFixed(2)} MB.
                 </p>
               </div>
             </div>
           </aside>
 
-          {/* Main Content */}
           <main className="lg:col-span-3">
             <div className="rounded-lg bg-white p-6 shadow-sm">
               <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
