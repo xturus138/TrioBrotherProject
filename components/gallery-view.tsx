@@ -302,9 +302,15 @@ export function GalleryView({
                 </h3>
               </div>
               <div className="mt-4">
-                <Progress value={usagePercentage} />
+                <div className="relative h-2 w-full rounded-full bg-primary/20">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all"
+                    style={{ width: `${usagePercentage.toFixed(2)}%` }}
+                  />
+                </div>
                 <p className="mt-2 text-sm text-gray-600">
-                  Digunakan {totalStorageUsedMB.toFixed(2)} MB dari{" "}
+                  Digunakan {totalStorageUsedMB.toFixed(2)} MB (
+                  {usagePercentage.toFixed(2)}%) dari{" "}
                   {storageQuotaMB.toFixed(0)} MB
                 </p>
                 <p className="text-xs text-gray-500">
