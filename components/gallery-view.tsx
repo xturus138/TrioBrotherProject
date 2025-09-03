@@ -26,17 +26,21 @@ import {
   SearchIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  HardDriveIcon,
 } from "lucide-react";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/PaginationControls";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress"; // Impor Progress
 
 interface User {
   id: string;
   name: string;
   created_at: string;
   pin: string;
+  // asumsi Anda menambahkan kuota penyimpanan di sini
+  // storage_quota_mb: number;
 }
 
 interface Asset {
@@ -76,6 +80,9 @@ interface GalleryViewProps {
   page: number;
   perPage: number;
   searchQuery?: string;
+  // asumsi Anda meneruskan data storage usage dari page.tsx
+  totalStorageUsedMB?: number;
+  storageQuotaMB?: number;
 }
 
 const FOLDERS_PER_PAGE = 5;
@@ -91,6 +98,8 @@ export function GalleryView({
   page,
   perPage,
   searchQuery,
+  totalStorageUsedMB = 0,
+  storageQuotaMB = 1024, // Contoh kuota 1 GB
 }: GalleryViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -133,12 +142,14 @@ export function GalleryView({
     folder.name.toLowerCase().includes(folderSearchQuery.toLowerCase())
   );
 
-  // Logika pagination folder
   const totalFolderPages = Math.ceil(filteredFolders.length / FOLDERS_PER_PAGE);
   const paginatedFolders = filteredFolders.slice(
     (folderPage - 1) * FOLDERS_PER_PAGE,
     folderPage * FOLDERS_PER_PAGE
   );
+
+  const usagePercentage = (totalStorageUsedMB / storageQuotaMB) * 100;
+  const remainingStorageMB = storageQuotaMB - totalStorageUsedMB;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -188,7 +199,7 @@ export function GalleryView({
                   value={folderSearchQuery}
                   onChange={(e) => {
                     setFolderSearchQuery(e.target.value);
-                    setFolderPage(1); // Reset ke halaman 1 saat pencarian
+                    setFolderPage(1);
                   }}
                 />
               </div>
@@ -255,7 +266,6 @@ export function GalleryView({
                 ))}
               </div>
 
-              {/* Kontrol pagination untuk folder */}
               {totalFolderPages > 1 && (
                 <div className="mt-4 flex items-center justify-between">
                   <Button
@@ -285,6 +295,24 @@ export function GalleryView({
                   </Button>
                 </div>
               )}
+            </div>
+
+            {/* Storage Info Section */}
+            <div className="mt-8 rounded-lg bg-white p-6 shadow-sm">
+              <div className="flex items-center gap-3">
+                <HardDriveIcon className="h-5 w-5 text-indigo-600" />
+                <h3 className="text-lg font-semibold text-gray-900">Storage</h3>
+              </div>
+              <div className="mt-4">
+                <Progress value={usagePercentage} />
+                <p className="mt-2 text-sm text-gray-600">
+                  Used {totalStorageUsedMB.toFixed(2)} MB of{" "}
+                  {storageQuotaMB.toFixed(0)} MB
+                </p>
+                <p className="text-xs text-gray-500">
+                  You have {remainingStorageMB.toFixed(2)} MB remaining.
+                </p>
+              </div>
             </div>
           </aside>
 
