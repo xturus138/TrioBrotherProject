@@ -1,4 +1,3 @@
-// app/gallery/page.tsx
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { GalleryView } from "@/components/gallery-view";
@@ -6,40 +5,33 @@ import { GalleryView } from "@/components/gallery-view";
 export default async function GalleryPage({
   searchParams,
 }: {
-  // ⬇️ Next.js 15: searchParams wajib Promise lalu di-await
   searchParams: Promise<{ folder?: string }>;
 }) {
   const supabase = await createClient();
-
-  // ✅ await dulu baru akses propertinya
   const { folder: selectedFolderId } = await searchParams;
-
-  // Cek login
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
 
-  // Data user (pakai id yang kamu simpan di user_metadata)
+  if (!user) {
+    redirect("/login");
+  }
+
   const { data: userData } = await supabase
     .from("users")
     .select("*")
     .eq("id", user.user_metadata?.user_id)
     .single();
 
-  // Semua folder
   const { data: folders } = await supabase
     .from("folders")
     .select("*")
     .order("name");
 
-  // Total semua aset (pakai head + count biar ringan)
   const { count: totalCount } = await supabase
     .from("assets")
     .select("*", { count: "exact", head: true });
 
-  // ⛔️ .group() nggak ada di supabase-js
-  // ✅ Tarik folder_id lalu agregasi di JS
   const { data: perFolderRows } = await supabase
     .from("assets")
     .select("folder_id")
@@ -52,7 +44,6 @@ export default async function GalleryPage({
     }
   });
 
-  // Filter aset by selectedFolderId
   let query = supabase
     .from("assets")
     .select(

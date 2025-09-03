@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -23,6 +23,7 @@ import {
   LogOutIcon,
   MoreVerticalIcon,
 } from "lucide-react";
+import { LoadingOverlay } from "@/components/LoadingOverlay"; // Import komponen baru
 
 interface User {
   id: string;
@@ -77,6 +78,12 @@ export function GalleryView({
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [shareAsset, setShareAsset] = useState<Asset | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    // Nonaktifkan loading setelah navigasi selesai
+    setIsLoading(false);
+  }, [assets]);
 
   const selectedFolder = folders.find((f) => f.id === selectedFolderId);
 
@@ -89,8 +96,14 @@ export function GalleryView({
 
   const handleShare = (asset: Asset) => setShareAsset(asset);
 
+  const handleNavigationClick = (href: string) => {
+    setIsLoading(true);
+    router.push(href);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <LoadingOverlay isLoading={isLoading} /> {/* Tambahkan overlay di sini */}
       {/* Header */}
       <header className="border-b bg-white shadow-sm">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -117,7 +130,6 @@ export function GalleryView({
           </Button>
         </div>
       </header>
-
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
           {/* Sidebar */}
@@ -129,9 +141,9 @@ export function GalleryView({
               </div>
 
               <div className="space-y-2">
-                <Link
-                  href="/gallery"
-                  className={`flex items-center gap-3 rounded-lg p-3 transition-colors ${
+                <button
+                  onClick={() => handleNavigationClick("/gallery")}
+                  className={`flex w-full items-center gap-3 rounded-lg p-3 transition-colors ${
                     !selectedFolderId
                       ? "border border-indigo-200 bg-indigo-50 text-indigo-700"
                       : "text-gray-700 hover:bg-gray-50"
@@ -142,7 +154,7 @@ export function GalleryView({
                   <Badge variant="secondary" className="ml-auto">
                     {totalCount}
                   </Badge>
-                </Link>
+                </button>
 
                 {folders.map((folder) => (
                   <div
@@ -153,8 +165,10 @@ export function GalleryView({
                         : "text-gray-700 hover:bg-gray-50"
                     }`}
                   >
-                    <Link
-                      href={`/gallery?folder=${folder.id}`}
+                    <button
+                      onClick={() =>
+                        handleNavigationClick(`/gallery?folder=${folder.id}`)
+                      }
                       className="min-w-0 flex flex-1 items-center gap-3"
                     >
                       <FolderIcon className="h-5 w-5 shrink-0" />
@@ -164,7 +178,7 @@ export function GalleryView({
                       <Badge variant="secondary" className="ml-auto">
                         {folderCounts[folder.id] || 0}
                       </Badge>
-                    </Link>
+                    </button>
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -190,7 +204,7 @@ export function GalleryView({
             </div>
           </aside>
 
-          {/* Main */}
+          {/* Main Content */}
           <main className="lg:col-span-3">
             <div className="rounded-lg bg-white p-6 shadow-sm">
               <div className="mb-6 flex items-center justify-between">
@@ -241,7 +255,6 @@ export function GalleryView({
           </main>
         </div>
       </div>
-
       {shareAsset && (
         <ShareDialog
           asset={shareAsset}
