@@ -1,8 +1,9 @@
+// components/gallery-view.tsx
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,10 +23,13 @@ import {
   ImageIcon,
   LogOutIcon,
   MoreVerticalIcon,
+  SearchIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from "lucide-react";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
-import { Input } from "@/components/ui/input"; // Import Input
-import { Label } from "@/components/ui/label"; // Import Label
+import { Input } from "@/components/ui/input";
+import { PaginationControls } from "@/components/PaginationControls";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface User {
@@ -39,7 +43,7 @@ interface Asset {
   id: string;
   filename: string;
   original_filename: string;
-  file_type: string; // e.g. "image/png" or "video/mp4"
+  file_type: string;
   file_size: number;
   blob_url: string;
   caption: string | null;
@@ -49,7 +53,7 @@ interface Asset {
   created_at: string;
   uploaded_by_user: { name: string };
   folder: { name: string } | null;
-  thumbnail_url?: string | null; // optional (used for videos if available)
+  thumbnail_url?: string | null;
 }
 
 interface Folder {
@@ -68,7 +72,13 @@ interface GalleryViewProps {
   selectedFolderId?: string;
   folderCounts: FolderCounts;
   totalCount: number;
+  totalAssetsCount: number;
+  page: number;
+  perPage: number;
+  searchQuery?: string;
 }
+
+const FOLDERS_PER_PAGE = 5;
 
 export function GalleryView({
   currentUser,
@@ -77,12 +87,19 @@ export function GalleryView({
   selectedFolderId,
   folderCounts,
   totalCount,
+  totalAssetsCount,
+  page,
+  perPage,
+  searchQuery,
 }: GalleryViewProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [shareAsset, setShareAsset] = useState<Asset | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [folderSearchQuery, setFolderSearchQuery] = useState(""); // State search baru
+  const [folderSearchQuery, setFolderSearchQuery] = useState("");
+  const [mediaSearchQuery, setMediaSearchQuery] = useState(searchQuery || "");
+  const [folderPage, setFolderPage] = useState(1);
 
   useEffect(() => {
     setIsLoading(false);
@@ -104,8 +121,23 @@ export function GalleryView({
     router.push(href);
   };
 
+  const handleMediaSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const params = new URLSearchParams(searchParams);
+    params.set("search", mediaSearchQuery);
+    params.set("page", "1");
+    handleNavigationClick(`/gallery?${params.toString()}`);
+  };
+
   const filteredFolders = folders.filter((folder) =>
     folder.name.toLowerCase().includes(folderSearchQuery.toLowerCase())
+  );
+
+  // Logika pagination folder
+  const totalFolderPages = Math.ceil(filteredFolders.length / FOLDERS_PER_PAGE);
+  const paginatedFolders = filteredFolders.slice(
+    (folderPage - 1) * FOLDERS_PER_PAGE,
+    folderPage * FOLDERS_PER_PAGE
   );
 
   return (
@@ -149,13 +181,15 @@ export function GalleryView({
                 <CreateFolderDialog />
               </div>
 
-              {/* Tambahkan input search di sini */}
               <div className="mb-4">
                 <Input
                   id="folder-search"
                   placeholder="Search folders..."
                   value={folderSearchQuery}
-                  onChange={(e) => setFolderSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setFolderSearchQuery(e.target.value);
+                    setFolderPage(1); // Reset ke halaman 1 saat pencarian
+                  }}
                 />
               </div>
 
@@ -175,7 +209,7 @@ export function GalleryView({
                   </Badge>
                 </button>
 
-                {filteredFolders.map((folder) => (
+                {paginatedFolders.map((folder) => (
                   <div
                     key={folder.id}
                     className={`group flex items-center justify-between gap-3 rounded-lg p-3 transition-colors ${
@@ -220,25 +254,71 @@ export function GalleryView({
                   </div>
                 ))}
               </div>
+
+              {/* Kontrol pagination untuk folder */}
+              {totalFolderPages > 1 && (
+                <div className="mt-4 flex items-center justify-between">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() =>
+                      setFolderPage((prev) => Math.max(1, prev - 1))
+                    }
+                    disabled={folderPage === 1}
+                  >
+                    <ChevronLeftIcon className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-gray-500">
+                    Page {folderPage} of {totalFolderPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() =>
+                      setFolderPage((prev) =>
+                        Math.min(totalFolderPages, prev + 1)
+                      )
+                    }
+                    disabled={folderPage === totalFolderPages}
+                  >
+                    <ChevronRightIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           </aside>
 
           {/* Main Content */}
           <main className="lg:col-span-3">
             <div className="rounded-lg bg-white p-6 shadow-sm">
-              <div className="mb-6 flex items-center justify-between">
+              <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900">
                     {selectedFolder ? selectedFolder.name : "All Photos"}
                   </h2>
                   <p className="mt-1 text-gray-600">
-                    {assets.length} {assets.length === 1 ? "item" : "items"}
+                    {totalAssetsCount}{" "}
+                    {totalAssetsCount === 1 ? "item" : "items"}
                   </p>
                 </div>
-                <UploadDialog
-                  folders={folders}
-                  selectedFolderId={selectedFolderId}
-                />
+                <div className="flex items-center gap-2">
+                  <form onSubmit={handleMediaSearch} className="flex-1">
+                    <div className="relative">
+                      <Input
+                        type="search"
+                        placeholder="Search media..."
+                        value={mediaSearchQuery}
+                        onChange={(e) => setMediaSearchQuery(e.target.value)}
+                        className="w-full pl-8"
+                      />
+                      <SearchIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    </div>
+                  </form>
+                  <UploadDialog
+                    folders={folders}
+                    selectedFolderId={selectedFolderId}
+                  />
+                </div>
               </div>
 
               {assets.length === 0 ? (
@@ -268,6 +348,15 @@ export function GalleryView({
                       onShare={(a) => setShareAsset(a)}
                     />
                   ))}
+                </div>
+              )}
+              {totalAssetsCount > perPage && (
+                <div className="mt-8">
+                  <PaginationControls
+                    totalCount={totalAssetsCount}
+                    perPage={perPage}
+                    page={page}
+                  />
                 </div>
               )}
             </div>
