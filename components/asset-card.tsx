@@ -26,7 +26,7 @@ interface Asset {
   id: string;
   filename: string;
   original_filename: string;
-  file_type: string; // e.g. "image/png" or "video/mp4"
+  file_type: string;
   file_size: number;
   blob_url: string;
   caption: string | null;
@@ -36,7 +36,7 @@ interface Asset {
   created_at: string;
   uploaded_by_user: { name: string };
   folder: { name: string } | null;
-  thumbnail_url?: string | null; // optional (used for videos if available)
+  thumbnail_url?: string | null;
 }
 
 interface Folder {
@@ -112,11 +112,6 @@ export function AssetCard({
   return (
     <>
       <Card className="overflow-hidden transition-shadow hover:shadow-md">
-        {/* === UNIFORM SQUARE MEDIA BOX ===
-            - aspect-square keeps ALL cards the same square shape
-            - overflow-hidden prevents any child from pushing the card
-            - object-cover fills the square without stretching
-        */}
         <div className="relative aspect-square w-full overflow-hidden bg-muted">
           {asset.file_type.startsWith("image/") ? (
             <img
@@ -127,7 +122,6 @@ export function AssetCard({
             />
           ) : (
             <>
-              {/* For videos we still show a square box; show the poster/thumbnail if available */}
               <video
                 src={asset.blob_url}
                 className="h-full w-full object-cover"
@@ -143,7 +137,6 @@ export function AssetCard({
               </div>
             </>
           )}
-
           {canEdit && (
             <div className="absolute right-2 top-2">
               <DropdownMenu>
@@ -173,43 +166,40 @@ export function AssetCard({
             </div>
           )}
         </div>
-
         <CardContent className="p-4 pb-2">
           {asset.caption && (
             <p className="mb-2 line-clamp-2 text-sm text-foreground/80">
               {asset.caption}
             </p>
           )}
-
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>by {asset.uploaded_by_user.name}</span>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleHeart}
-                className={`flex items-center gap-1 transition-colors ${
-                  isHearted ? "text-red-500" : "hover:text-red-500"
-                }`}
-                aria-label="Heart"
-              >
-                <HeartIcon
-                  className={`h-4 w-4 ${isHearted ? "fill-current" : ""}`}
-                />
-                <span>{hearts}</span>
-              </button>
-              <button
-                onClick={() => onShare?.(asset)}
-                className="transition-colors hover:text-indigo-600"
-                aria-label="Share"
-              >
-                <ShareIcon className="h-4 w-4" />
-              </button>
-            </div>
           </div>
         </CardContent>
-
-        <CardFooter className="pt-2">
+        <CardFooter className="flex items-center justify-between pt-2">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleHeart}
+              className={`flex items-center gap-1 transition-colors ${
+                isHearted ? "text-red-500" : "hover:text-red-500"
+              }`}
+              aria-label="Heart"
+            >
+              <HeartIcon
+                className={`h-4 w-4 ${isHearted ? "fill-current" : ""}`}
+              />
+              <span>{hearts}</span>
+            </button>
+            <button
+              onClick={() => onShare?.(asset)}
+              className="transition-colors hover:text-indigo-600"
+              aria-label="Share"
+            >
+              <ShareIcon className="h-4 w-4" />
+            </button>
+          </div>
           <Button
-            className="w-full bg-indigo-600 hover:bg-indigo-700"
+            className="bg-indigo-600 hover:bg-indigo-700"
             onClick={() => setShowViewer(true)}
           >
             <EyeIcon className="mr-2 h-4 w-4" />
@@ -217,7 +207,6 @@ export function AssetCard({
           </Button>
         </CardFooter>
       </Card>
-
       <EditAssetDialog
         asset={asset}
         folders={folders}
@@ -228,7 +217,6 @@ export function AssetCard({
           router.refresh();
         }}
       />
-
       <AssetViewerDialog
         asset={asset}
         open={showViewer}

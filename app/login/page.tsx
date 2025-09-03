@@ -1,27 +1,33 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { createClient } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function LoginPage() {
-  const [name, setName] = useState("")
-  const [pin, setPin] = useState("")
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
+  const [name, setName] = useState("");
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const supabase = createClient()
-    setIsLoading(true)
-    setError(null)
+    e.preventDefault();
+    const supabase = createClient();
+    setIsLoading(true);
+    setError(null);
 
     try {
       // Find user by name and PIN
@@ -30,24 +36,24 @@ export default function LoginPage() {
         .select("*")
         .eq("name", name)
         .eq("pin", pin)
-        .limit(1)
+        .limit(1);
 
-      if (userError) throw userError
+      if (userError) throw userError;
 
       if (!users || users.length === 0) {
-        throw new Error("Invalid name or PIN")
+        throw new Error("Invalid name or PIN");
       }
 
-      const user = users[0]
+      const user = users[0];
 
-      const email = `${user.name.toLowerCase()}@besttrio.app`
-      const password = user.id
+      const email = `${user.name.toLowerCase()}@besttrio.app`;
+      const password = user.id;
 
       // Try to sign in first
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
-      })
+      });
 
       // If sign in fails, create the account first
       if (signInError) {
@@ -60,33 +66,36 @@ export default function LoginPage() {
               name: user.name,
             },
           },
-        })
+        });
 
-        if (signUpError) throw signUpError
+        if (signUpError) throw signUpError;
 
         // Now sign in
-        const { error: retrySignInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
+        const { error: retrySignInError } =
+          await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
 
-        if (retrySignInError) throw retrySignInError
+        if (retrySignInError) throw retrySignInError;
       }
 
-      router.push("/gallery")
+      router.push("/gallery");
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred")
+      setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10 bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="w-full max-w-sm">
         <Card className="shadow-lg">
           <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold text-indigo-900">BestTrio</CardTitle>
+            <CardTitle className="text-3xl font-bold text-indigo-900">
+              BestTrio
+            </CardTitle>
             <CardDescription className="text-indigo-600">
               Welcome back! Enter your details to access your memories.
             </CardDescription>
@@ -118,7 +127,11 @@ export default function LoginPage() {
                   />
                 </div>
                 {error && <p className="text-sm text-red-500">{error}</p>}
-                <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={isLoading}>
+                <Button
+                  type="submit"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700"
+                  disabled={isLoading}
+                >
                   {isLoading ? "Signing in..." : "Sign In"}
                 </Button>
               </div>
@@ -127,5 +140,5 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
-  )
+  );
 }
