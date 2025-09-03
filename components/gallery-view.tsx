@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/PaginationControls";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface User {
   id: string;
@@ -100,6 +101,7 @@ export function GalleryView({
 }: GalleryViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isMobile = useIsMobile();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [shareAsset, setShareAsset] = useState<Asset | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -343,6 +345,17 @@ export function GalleryView({
                   />
                 </div>
               </div>
+
+              {/* Tampilkan pagination di atas untuk mobile */}
+              {isMobile && totalAssetsCount > perPage && (
+                <div className="mb-4">
+                  <PaginationControls
+                    totalCount={totalAssetsCount}
+                    perPage={perPage}
+                    page={page}
+                  />
+                </div>
+              )}
 
               {assets.length === 0 ? (
                 <div className="py-12 text-center">

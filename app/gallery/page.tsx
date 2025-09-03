@@ -2,8 +2,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { GalleryView } from "@/components/gallery-view";
-
-const PER_PAGE = 6;
+import { headers } from "next/headers";
 
 export default async function GalleryPage({
   searchParams,
@@ -12,6 +11,15 @@ export default async function GalleryPage({
 }) {
   const supabase = await createClient();
 
+  const headersList = headers();
+  const userAgent = headersList.get("user-agent");
+  const isMobile = Boolean(
+    userAgent?.match(
+      /Android|BlackBerry|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i
+    )
+  );
+
+  const PER_PAGE = isMobile ? 3 : 6;
   const {
     folder: selectedFolderId,
     page: pageParam,
@@ -52,15 +60,12 @@ export default async function GalleryPage({
     }
   });
 
-  // Kueri yang diubah untuk menghitung total penggunaan penyimpanan dari SEMUA aset.
-  const { data: allAssets, error: allAssetsError } = await supabase
-    .from("assets")
-    .select("file_size");
+  const { data: allAssets } = await supabase.from("assets").select("file_size");
 
   let totalStorageUsedMB = 0;
   if (allAssets) {
     const totalBytes = allAssets.reduce(
-      (sum, asset) => sum + asset.file_size,
+      (sum: number, asset: { file_size: number }) => sum + asset.file_size,
       0
     );
     totalStorageUsedMB = totalBytes / 1024 / 1024;
@@ -105,7 +110,7 @@ export default async function GalleryPage({
       perPage={PER_PAGE}
       searchQuery={searchQuery}
       totalStorageUsedMB={totalStorageUsedMB}
-      storageQuotaMB={8000}
+      storageQuotaMB={1024}
     />
   );
 }
