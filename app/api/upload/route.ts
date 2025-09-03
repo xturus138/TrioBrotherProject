@@ -8,34 +8,21 @@ import path from "path";
 import os from "os";
 import { pipeline } from "stream/promises";
 
-// Membangun jalur biner secara manual untuk menghindari masalah resolusi Next.js
-const ffmpegStaticPath = path.join(
-  process.cwd(),
-  "node_modules",
-  "ffmpeg-static",
-  "ffmpeg.exe"
-);
-const ffprobeStaticPath = path.join(
-  process.cwd(),
-  "node_modules",
-  "ffprobe-static",
-  "bin",
-  "win32",
-  "x64",
-  "ffprobe.exe"
-);
+// Atur jalur ke FFmpeg dan FFprobe statis.
+const ffmpegPath = require("ffmpeg-static");
+const ffprobePath = require("ffprobe-static").path;
+ffmpeg.setFfmpegPath(ffmpegPath);
+ffmpeg.setFfprobePath(ffprobePath);
 
-ffmpeg.setFfmpegPath(ffmpegStaticPath);
-ffmpeg.setFfprobePath(ffprobeStaticPath);
-
-console.log("FFmpeg path (manual):", ffmpegStaticPath);
-console.log("FFprobe path (manual):", ffprobeStaticPath);
+console.log("FFmpeg path:", ffmpegPath);
+console.log("FFprobe path:", ffprobePath);
 
 export async function POST(request: NextRequest) {
+  const tempFilesToCleanUp: string[] = [];
+
   try {
     const supabase = await createClient();
 
-    // Check authentication
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -45,7 +32,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user data from our custom users table
     const { data: userData } = await supabase
       .from("users")
       .select("*")
@@ -67,7 +53,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // Validate file type
     const allowedTypes = [
       "image/jpeg",
       "image/png",
@@ -84,7 +69,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique filename
     const timestamp = Date.now();
     const extension = file.name.split(".").pop();
     const filename = `${timestamp}-${Math.random()
@@ -93,70 +77,56 @@ export async function POST(request: NextRequest) {
 
     let thumbnailUrl = null;
     const tempFilePath = path.join(os.tmpdir(), filename);
+    tempFilesToCleanUp.push(tempFilePath);
 
-    // Simpan file stream yang masuk ke file sementara menggunakan pipeline
     const writeStream = fs.createWriteStream(tempFilePath);
     await pipeline(file.stream() as any, writeStream);
 
-    // Proses video untuk membuat thumbnail
     if (file.type.startsWith("video/")) {
-      const thumbnailName = `${timestamp}-${Math.random()
-        .toString(36)
-        .substring(7)}.jpeg`;
-      const tempThumbnailPath = path.join(os.tmpdir(), thumbnailName);
+      try {
+        const thumbnailName = `${timestamp}-${Math.random()
+          .toString(36)
+          .substring(7)}.jpeg`;
+        const tempThumbnailPath = path.join(os.tmpdir(), thumbnailName);
+        tempFilesToCleanUp.push(tempThumbnailPath);
 
-      await new Promise<void>((resolve, reject) => {
-        ffmpeg(tempFilePath)
-          .screenshots({
-            count: 1,
-            folder: os.tmpdir(),
-            filename: thumbnailName,
-            size: "320x240",
-          })
-          .on("end", () => {
-            console.log("FFmpeg finished thumbnail generation.");
-            fs.unlink(tempFilePath, (err) => {
-              if (err)
-                console.error("Failed to delete temporary video file:", err);
+        await new Promise<void>((resolve, reject) => {
+          ffmpeg(tempFilePath)
+            .screenshots({
+              count: 1,
+              folder: os.tmpdir(),
+              filename: thumbnailName,
+              size: "320x240",
+            })
+            .on("end", () => {
+              console.log("FFmpeg finished thumbnail generation.");
+              resolve();
+            })
+            .on("error", (err) => {
+              console.error("FFmpeg Error:", err.message);
+              reject(err);
             });
-            resolve();
-          })
-          .on("error", (err) => {
-            console.error("FFmpeg Error:", err.message);
-            fs.unlink(tempFilePath, (err) => {
-              if (err)
-                console.error("Failed to delete temporary video file:", err);
-            });
-            reject(err);
-          });
-      });
+        });
 
-      // Unggah thumbnail ke Vercel Blob
-      const thumbnailFile = fs.readFileSync(tempThumbnailPath);
-      const thumbnailBlob = await put(thumbnailName, thumbnailFile, {
-        access: "public",
-      });
-      thumbnailUrl = thumbnailBlob.url;
-      fs.unlink(tempThumbnailPath, (err) => {
-        if (err)
-          console.error("Failed to delete temporary thumbnail file:", err);
-      });
+        const thumbnailFile = fs.readFileSync(tempThumbnailPath);
+        const thumbnailBlob = await put(thumbnailName, thumbnailFile, {
+          access: "public",
+        });
+        thumbnailUrl = thumbnailBlob.url;
+      } catch (ffErr) {
+        console.error(
+          "Thumbnail creation failed. Proceeding with main upload without a thumbnail."
+        );
+        console.error("Details:", ffErr);
+        thumbnailUrl = null;
+      }
     }
 
-    // Unggah file utama ke Vercel Blob
     const fileToUpload = file.type.startsWith("video/")
       ? fs.readFileSync(tempFilePath)
       : file;
     const blob = await put(filename, fileToUpload, { access: "public" });
 
-    // Hapus file video sementara setelah diunggah
-    if (file.type.startsWith("video/")) {
-      fs.unlink(tempFilePath, (err) => {
-        if (err) console.error("Failed to delete temporary video file:", err);
-      });
-    }
-
-    // Save to database
     const { data: asset, error: dbError } = await supabase
       .from("assets")
       .insert({
@@ -168,7 +138,7 @@ export async function POST(request: NextRequest) {
         caption: caption || null,
         folder_id: folderId || null,
         uploaded_by: userData.id,
-        thumbnail_url: thumbnailUrl, // Simpan URL thumbnail
+        thumbnail_url: thumbnailUrl,
       })
       .select()
       .single();
@@ -188,5 +158,13 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+  } finally {
+    // Pastikan semua file sementara dihapus
+    for (const tempFile of tempFilesToCleanUp) {
+      fs.unlink(tempFile, (err) => {
+        if (err)
+          console.error("Failed to delete temporary file:", tempFile, err);
+      });
+    }
   }
 }

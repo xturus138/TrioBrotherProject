@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,6 +16,7 @@ import {
   MoreVerticalIcon,
   EditIcon,
   TrashIcon,
+  EyeIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { EditAssetDialog } from "@/components/edit-asset-dialog";
@@ -58,10 +59,10 @@ export function AssetCard({
   onShare,
 }: AssetCardProps) {
   const [hearts, setHearts] = useState(asset.hearts);
-  const [isHearted, setIsHearted] = useState(false); // We'd need to check this from the API
+  const [isHearted, setIsHearted] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showViewer, setShowViewer] = useState(false); // State baru untuk viewer
+  const [showViewer, setShowViewer] = useState(false);
   const router = useRouter();
 
   const handleHeart = async () => {
@@ -113,10 +114,7 @@ export function AssetCard({
   return (
     <>
       <Card className="overflow-hidden hover:shadow-md transition-shadow">
-        <div
-          className="aspect-square relative bg-gray-100 cursor-pointer"
-          onClick={() => setShowViewer(true)} // Tambahkan handler untuk membuka viewer
-        >
+        <div className="aspect-square relative bg-gray-100">
           {asset.file_type.startsWith("image/") ? (
             <img
               src={asset.blob_url || "/placeholder.svg"}
@@ -127,8 +125,13 @@ export function AssetCard({
             <video
               src={asset.blob_url}
               className="w-full h-full object-cover"
-              poster="/video-thumbnail.png"
+              poster={asset.thumbnail_url || "/video-thumbnail.png"}
             />
+          )}
+          {!asset.file_type.startsWith("image/") && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
+              <VideoIcon className="w-12 h-12 text-white/80" />
+            </div>
           )}
 
           {canEdit && (
@@ -161,7 +164,7 @@ export function AssetCard({
           )}
         </div>
 
-        <CardContent className="p-4">
+        <CardContent className="p-4 pb-2">
           {asset.caption && (
             <p className="text-sm text-gray-700 mb-2 line-clamp-2">
               {asset.caption}
@@ -190,6 +193,15 @@ export function AssetCard({
             </div>
           </div>
         </CardContent>
+        <CardFooter className="pt-2">
+          <Button
+            className="w-full bg-indigo-600 hover:bg-indigo-700" // Menggunakan warna yang sama dengan tombol upload
+            onClick={() => setShowViewer(true)}
+          >
+            <EyeIcon className="w-4 h-4 mr-2" />
+            Lihat
+          </Button>
+        </CardFooter>
       </Card>
 
       <EditAssetDialog
@@ -202,7 +214,7 @@ export function AssetCard({
           router.refresh();
         }}
       />
-      <AssetViewerDialog // Tambahkan komponen viewer di sini
+      <AssetViewerDialog
         asset={asset}
         open={showViewer}
         onOpenChange={setShowViewer}
