@@ -23,7 +23,10 @@ import {
   LogOutIcon,
   MoreVerticalIcon,
 } from "lucide-react";
-import { LoadingOverlay } from "@/components/LoadingOverlay"; // Import komponen baru
+import { LoadingOverlay } from "@/components/LoadingOverlay";
+import { Input } from "@/components/ui/input"; // Import Input
+import { Label } from "@/components/ui/label"; // Import Label
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface User {
   id: string;
@@ -36,7 +39,7 @@ interface Asset {
   id: string;
   filename: string;
   original_filename: string;
-  file_type: string;
+  file_type: string; // e.g. "image/png" or "video/mp4"
   file_size: number;
   blob_url: string;
   caption: string | null;
@@ -46,7 +49,7 @@ interface Asset {
   created_at: string;
   uploaded_by_user: { name: string };
   folder: { name: string } | null;
-  thumbnail_url?: string | null;
+  thumbnail_url?: string | null; // optional (used for videos if available)
 }
 
 interface Folder {
@@ -79,9 +82,9 @@ export function GalleryView({
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [shareAsset, setShareAsset] = useState<Asset | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [folderSearchQuery, setFolderSearchQuery] = useState(""); // State search baru
 
   useEffect(() => {
-    // Nonaktifkan loading setelah navigasi selesai
     setIsLoading(false);
   }, [assets]);
 
@@ -101,9 +104,14 @@ export function GalleryView({
     router.push(href);
   };
 
+  const filteredFolders = folders.filter((folder) =>
+    folder.name.toLowerCase().includes(folderSearchQuery.toLowerCase())
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <LoadingOverlay isLoading={isLoading} /> {/* Tambahkan overlay di sini */}
+      <LoadingOverlay isLoading={isLoading} />
+
       {/* Header */}
       <header className="border-b bg-white shadow-sm">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -130,6 +138,7 @@ export function GalleryView({
           </Button>
         </div>
       </header>
+
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
           {/* Sidebar */}
@@ -140,11 +149,21 @@ export function GalleryView({
                 <CreateFolderDialog />
               </div>
 
+              {/* Tambahkan input search di sini */}
+              <div className="mb-4">
+                <Input
+                  id="folder-search"
+                  placeholder="Search folders..."
+                  value={folderSearchQuery}
+                  onChange={(e) => setFolderSearchQuery(e.target.value)}
+                />
+              </div>
+
               <div className="space-y-2">
                 <button
                   onClick={() => handleNavigationClick("/gallery")}
                   className={`flex w-full items-center gap-3 rounded-lg p-3 transition-colors ${
-                    !selectedFolderId
+                    !selectedFolderId && !folderSearchQuery
                       ? "border border-indigo-200 bg-indigo-50 text-indigo-700"
                       : "text-gray-700 hover:bg-gray-50"
                   }`}
@@ -156,7 +175,7 @@ export function GalleryView({
                   </Badge>
                 </button>
 
-                {folders.map((folder) => (
+                {filteredFolders.map((folder) => (
                   <div
                     key={folder.id}
                     className={`group flex items-center justify-between gap-3 rounded-lg p-3 transition-colors ${
@@ -255,6 +274,7 @@ export function GalleryView({
           </main>
         </div>
       </div>
+
       {shareAsset && (
         <ShareDialog
           asset={shareAsset}
