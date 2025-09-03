@@ -1,70 +1,56 @@
-"use client"
+// components/gallery-view.tsx
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { FolderIcon, ImageIcon, LogOutIcon, PlusIcon } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { UploadDialog } from "@/components/upload-dialog"
-import { AssetCard } from "@/components/asset-card"
-import { ShareDialog } from "@/components/share-dialog"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  FolderIcon,
+  ImageIcon,
+  LogOutIcon,
+  PlusIcon,
+  MoreVerticalIcon,
+} from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { UploadDialog } from "@/components/upload-dialog";
+import { AssetCard } from "@/components/asset-card";
+import { ShareDialog } from "@/components/share-dialog";
+import { CreateFolderDialog } from "@/components/create-folder-dialog";
+import { EditFolderDialog } from "@/components/edit-folder-dialog"; // Tambahkan impor ini
+import { DeleteFolderDialog } from "@/components/delete-folder-dialog"; // Tambahkan impor ini
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
-interface User {
-  id: string
-  name: string
-  pin: string
-  created_at: string
-}
+// ... (interface definitions tetap sama)
 
-interface Folder {
-  id: string
-  name: string
-  created_by: string
-  created_at: string
-}
-
-interface Asset {
-  id: string
-  filename: string
-  original_filename: string
-  file_type: string
-  file_size: number
-  blob_url: string
-  caption: string | null
-  folder_id: string | null
-  uploaded_by: string
-  hearts: number
-  created_at: string
-  uploaded_by_user: { name: string }
-  folder: { name: string } | null
-}
-
-interface GalleryViewProps {
-  currentUser: User | null
-  folders: Folder[]
-  assets: Asset[]
-  selectedFolderId?: string
-}
-
-export function GalleryView({ currentUser, folders, assets, selectedFolderId }: GalleryViewProps) {
-  const router = useRouter()
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const [shareAsset, setShareAsset] = useState<Asset | null>(null)
+export function GalleryView({
+  currentUser,
+  folders,
+  assets,
+  selectedFolderId,
+}: GalleryViewProps) {
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [shareAsset, setShareAsset] = useState<Asset | null>(null);
 
   const handleLogout = async () => {
-    setIsLoggingOut(true)
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push("/login")
-  }
+    setIsLoggingOut(true);
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+  };
 
   const handleShare = (asset: Asset) => {
-    setShareAsset(asset)
-  }
+    setShareAsset(asset);
+  };
 
-  const selectedFolder = folders.find((f) => f.id === selectedFolderId)
+  const selectedFolder = folders.find((f) => f.id === selectedFolderId);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -75,7 +61,10 @@ export function GalleryView({ currentUser, folders, assets, selectedFolderId }: 
             <div className="flex items-center gap-4">
               <h1 className="text-2xl font-bold text-indigo-900">BestTrio</h1>
               {currentUser && (
-                <Badge variant="secondary" className="bg-indigo-100 text-indigo-800">
+                <Badge
+                  variant="secondary"
+                  className="bg-indigo-100 text-indigo-800"
+                >
                   {currentUser.name}
                 </Badge>
               )}
@@ -101,9 +90,7 @@ export function GalleryView({ currentUser, folders, assets, selectedFolderId }: 
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">Folders</h2>
-                <Button size="sm" variant="outline" className="text-indigo-600 border-indigo-200 bg-transparent">
-                  <PlusIcon className="w-4 h-4" />
-                </Button>
+                <CreateFolderDialog />
               </div>
               <div className="space-y-2">
                 <Link
@@ -121,21 +108,45 @@ export function GalleryView({ currentUser, folders, assets, selectedFolderId }: 
                   </Badge>
                 </Link>
                 {folders.map((folder) => (
-                  <Link
+                  <div
                     key={folder.id}
-                    href={`/gallery?folder=${folder.id}`}
-                    className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                    className={`flex items-center justify-between gap-3 p-3 rounded-lg transition-colors group ${
                       selectedFolderId === folder.id
                         ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
                         : "text-gray-700 hover:bg-gray-50"
                     }`}
                   >
-                    <FolderIcon className="w-5 h-5" />
-                    <span className="font-medium">{folder.name}</span>
-                    <Badge variant="secondary" className="ml-auto">
-                      {assets.filter((a) => a.folder_id === folder.id).length}
-                    </Badge>
-                  </Link>
+                    <Link
+                      href={`/gallery?folder=${folder.id}`}
+                      className="flex-1 flex items-center gap-3 min-w-0"
+                    >
+                      <FolderIcon className="w-5 h-5 shrink-0" />
+                      <span className="font-medium truncate">
+                        {folder.name}
+                      </span>
+                      <Badge variant="secondary" className="ml-auto">
+                        {assets.filter((a) => a.folder_id === folder.id).length}
+                      </Badge>
+                    </Link>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100"
+                        >
+                          <MoreVerticalIcon className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <EditFolderDialog
+                          folder={folder}
+                          onSuccess={() => router.refresh()}
+                        />
+                        <DeleteFolderDialog folder={folder} />
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 ))}
               </div>
             </div>
@@ -153,19 +164,27 @@ export function GalleryView({ currentUser, folders, assets, selectedFolderId }: 
                     {assets.length} {assets.length === 1 ? "item" : "items"}
                   </p>
                 </div>
-                <UploadDialog folders={folders} selectedFolderId={selectedFolderId} />
+                <UploadDialog
+                  folders={folders}
+                  selectedFolderId={selectedFolderId}
+                />
               </div>
 
               {assets.length === 0 ? (
                 <div className="text-center py-12">
                   <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No photos yet</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    No photos yet
+                  </h3>
                   <p className="text-gray-600 mb-4">
                     {selectedFolder
                       ? `No photos in ${selectedFolder.name} folder yet.`
                       : "Start building your memories by uploading your first photo."}
                   </p>
-                  <UploadDialog folders={folders} selectedFolderId={selectedFolderId} />
+                  <UploadDialog
+                    folders={folders}
+                    selectedFolderId={selectedFolderId}
+                  />
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -185,7 +204,13 @@ export function GalleryView({ currentUser, folders, assets, selectedFolderId }: 
         </div>
       </div>
 
-      {shareAsset && <ShareDialog asset={shareAsset} open={!!shareAsset} onOpenChange={() => setShareAsset(null)} />}
+      {shareAsset && (
+        <ShareDialog
+          asset={shareAsset}
+          open={!!shareAsset}
+          onOpenChange={() => setShareAsset(null)}
+        />
+      )}
     </div>
-  )
+  );
 }
