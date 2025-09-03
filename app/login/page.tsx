@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 
 export default function LoginPage() {
   const [name, setName] = useState("");
@@ -89,56 +89,59 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10 bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="w-full max-w-sm">
-        <Card className="shadow-lg">
-          <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold text-indigo-900">
-              BestTrio
-            </CardTitle>
-            <CardDescription className="text-indigo-600">
-              Welcome back! Enter your details to access your memories.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin}>
-              <div className="flex flex-col gap-6">
-                <div className="grid gap-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="Enter your name"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
+    <>
+      <LoadingOverlay isLoading={isLoading} />
+      <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10 bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="w-full max-w-sm">
+          <Card className="shadow-lg">
+            <CardHeader className="text-center">
+              <CardTitle className="text-3xl font-bold text-indigo-900">
+                BestTrio
+              </CardTitle>
+              <CardDescription className="text-indigo-600">
+                Welcome back! Enter your details to access your memories.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleLogin}>
+                <div className="flex flex-col gap-6">
+                  <div className="grid gap-2">
+                    <Label htmlFor="name">Name</Label>
+                    <Input
+                      id="name"
+                      type="text"
+                      placeholder="Enter your name"
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="pin">PIN</Label>
+                    <Input
+                      id="pin"
+                      type="password"
+                      placeholder="Enter your 4-digit PIN"
+                      required
+                      maxLength={4}
+                      value={pin}
+                      onChange={(e) => setPin(e.target.value)}
+                    />
+                  </div>
+                  {error && <p className="text-sm text-red-500">{error}</p>}
+                  <Button
+                    type="submit"
+                    className="w-full bg-indigo-600 hover:bg-indigo-700"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Signing in..." : "Sign In"}
+                  </Button>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="pin">PIN</Label>
-                  <Input
-                    id="pin"
-                    type="password"
-                    placeholder="Enter your 4-digit PIN"
-                    required
-                    maxLength={4}
-                    value={pin}
-                    onChange={(e) => setPin(e.target.value)}
-                  />
-                </div>
-                {error && <p className="text-sm text-red-500">{error}</p>}
-                <Button
-                  type="submit"
-                  className="w-full bg-indigo-600 hover:bg-indigo-700"
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Signing in..." : "Sign In"}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
