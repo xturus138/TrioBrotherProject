@@ -110,7 +110,7 @@ export default async function GalleryPage({
       perPage={PER_PAGE}
       searchQuery={searchQuery}
       totalStorageUsedMB={totalStorageUsedMB}
-      storageQuotaMB={1024}
+      storageQuotaMB={8000}
     />
   );
 }
