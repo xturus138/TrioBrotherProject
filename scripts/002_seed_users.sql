@@ -1,0 +1,13 @@
+-- Insert the three BestTrio members
+INSERT INTO users (id, name, pin) VALUES
+  ('11111111-1111-1111-1111-111111111111', 'Alex', '1234'),
+  ('22222222-2222-2222-2222-222222222222', 'Jordan', '5678'),
+  ('33333333-3333-3333-3333-333333333333', 'Casey', '9012')
+ON CONFLICT (id) DO NOTHING;
+
+-- Create default folders
+INSERT INTO folders (name, created_by) VALUES
+  ('General', '11111111-1111-1111-1111-111111111111'),
+  ('Favorites', '22222222-2222-2222-2222-222222222222'),
+  ('Adventures', '33333333-3333-3333-3333-333333333333')
+ON CONFLICT DO NOTHING;
