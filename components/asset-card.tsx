@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +19,6 @@ import {
   TrashIcon,
   EyeIcon,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { EditAssetDialog } from "@/components/edit-asset-dialog";
 import { AssetViewerDialog } from "@/components/asset-viewer-dialog";
 
@@ -26,7 +26,7 @@ interface Asset {
   id: string;
   filename: string;
   original_filename: string;
-  file_type: string;
+  file_type: string; // e.g. "image/png" or "video/mp4"
   file_size: number;
   blob_url: string;
   caption: string | null;
@@ -36,6 +36,7 @@ interface Asset {
   created_at: string;
   uploaded_by_user: { name: string };
   folder: { name: string } | null;
+  thumbnail_url?: string | null; // optional (used for videos if available)
 }
 
 interface Folder {
@@ -58,26 +59,27 @@ export function AssetCard({
   currentUserId,
   onShare,
 }: AssetCardProps) {
+  const router = useRouter();
   const [hearts, setHearts] = useState(asset.hearts);
   const [isHearted, setIsHearted] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showViewer, setShowViewer] = useState(false);
-  const router = useRouter();
+
+  const canEdit = currentUserId === asset.uploaded_by;
 
   const handleHeart = async () => {
     try {
       const response = await fetch(`/api/assets/${asset.id}/heart`, {
         method: "POST",
       });
-
       if (response.ok) {
         const data = await response.json();
         setHearts(data.hearts);
         setIsHearted(data.hearted);
       }
-    } catch (error) {
-      console.error("Failed to heart asset:", error);
+    } catch (err) {
+      console.error("Failed to heart asset:", err);
     }
   };
 
@@ -86,76 +88,84 @@ export function AssetCard({
       !confirm(
         "Are you sure you want to delete this photo? This action cannot be undone."
       )
-    ) {
+    )
       return;
-    }
 
     setIsDeleting(true);
     try {
       const response = await fetch(`/api/assets/${asset.id}`, {
         method: "DELETE",
       });
-
       if (response.ok) {
         router.refresh();
       } else {
         alert("Failed to delete photo");
       }
-    } catch (error) {
-      console.error("Failed to delete asset:", error);
+    } catch (err) {
+      console.error("Failed to delete asset:", err);
       alert("Failed to delete photo");
     } finally {
       setIsDeleting(false);
     }
   };
 
-  const canEdit = currentUserId === asset.uploaded_by;
-
   return (
     <>
-      <Card className="overflow-hidden hover:shadow-md transition-shadow">
-        <div className="aspect-square relative bg-gray-100">
+      <Card className="overflow-hidden transition-shadow hover:shadow-md">
+        {/* === UNIFORM SQUARE MEDIA BOX ===
+            - aspect-square keeps ALL cards the same square shape
+            - overflow-hidden prevents any child from pushing the card
+            - object-cover fills the square without stretching
+        */}
+        <div className="relative aspect-square w-full overflow-hidden bg-muted">
           {asset.file_type.startsWith("image/") ? (
             <img
               src={asset.blob_url || "/placeholder.svg"}
               alt={asset.caption || asset.original_filename}
-              className="w-full h-full object-cover"
+              className="h-full w-full object-cover"
+              draggable={false}
             />
           ) : (
-            <video
-              src={asset.blob_url}
-              className="w-full h-full object-cover"
-              poster={asset.thumbnail_url || "/video-thumbnail.png"}
-            />
-          )}
-          {!asset.file_type.startsWith("image/") && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
-              <VideoIcon className="w-12 h-12 text-white/80" />
-            </div>
+            <>
+              {/* For videos we still show a square box; show the poster/thumbnail if available */}
+              <video
+                src={asset.blob_url}
+                className="h-full w-full object-cover"
+                poster={asset.thumbnail_url || "/video-thumbnail.png"}
+                preload="metadata"
+                controls={false}
+                playsInline
+                muted
+                onClick={() => setShowViewer(true)}
+              />
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/25">
+                <VideoIcon className="h-10 w-10 text-white/90" />
+              </div>
+            </>
           )}
 
           {canEdit && (
-            <div className="absolute top-2 right-2">
+            <div className="absolute right-2 top-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="secondary"
-                    size="sm"
-                    className="h-8 w-8 p-0 bg-white/80 hover:bg-white"
+                    size="icon"
+                    className="h-8 w-8 bg-white/85 p-0 hover:bg-white"
                   >
-                    <MoreVerticalIcon className="w-4 h-4" />
+                    <MoreVerticalIcon className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
-                    <EditIcon className="w-4 h-4 mr-2" />
+                    <EditIcon className="mr-2 h-4 w-4" />
                     Edit
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={handleDelete}
                     disabled={isDeleting}
                   >
-                    <TrashIcon className="w-4 h-4 mr-2" />
+                    <TrashIcon className="mr-2 h-4 w-4" />
                     {isDeleting ? "Deleting..." : "Delete"}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -166,11 +176,12 @@ export function AssetCard({
 
         <CardContent className="p-4 pb-2">
           {asset.caption && (
-            <p className="text-sm text-gray-700 mb-2 line-clamp-2">
+            <p className="mb-2 line-clamp-2 text-sm text-foreground/80">
               {asset.caption}
             </p>
           )}
-          <div className="flex items-center justify-between text-xs text-gray-500">
+
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>by {asset.uploaded_by_user.name}</span>
             <div className="flex items-center gap-3">
               <button
@@ -178,27 +189,30 @@ export function AssetCard({
                 className={`flex items-center gap-1 transition-colors ${
                   isHearted ? "text-red-500" : "hover:text-red-500"
                 }`}
+                aria-label="Heart"
               >
                 <HeartIcon
-                  className={`w-4 h-4 ${isHearted ? "fill-current" : ""}`}
+                  className={`h-4 w-4 ${isHearted ? "fill-current" : ""}`}
                 />
                 <span>{hearts}</span>
               </button>
               <button
                 onClick={() => onShare?.(asset)}
-                className="hover:text-indigo-600 transition-colors"
+                className="transition-colors hover:text-indigo-600"
+                aria-label="Share"
               >
-                <ShareIcon className="w-4 h-4" />
+                <ShareIcon className="h-4 w-4" />
               </button>
             </div>
           </div>
         </CardContent>
+
         <CardFooter className="pt-2">
           <Button
-            className="w-full bg-indigo-600 hover:bg-indigo-700" // Menggunakan warna yang sama dengan tombol upload
+            className="w-full bg-indigo-600 hover:bg-indigo-700"
             onClick={() => setShowViewer(true)}
           >
-            <EyeIcon className="w-4 h-4 mr-2" />
+            <EyeIcon className="mr-2 h-4 w-4" />
             Lihat
           </Button>
         </CardFooter>
@@ -214,6 +228,7 @@ export function AssetCard({
           router.refresh();
         }}
       />
+
       <AssetViewerDialog
         asset={asset}
         open={showViewer}

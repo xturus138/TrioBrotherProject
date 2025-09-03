@@ -42,7 +42,7 @@ export function UploadDialog({ folders, selectedFolderId }: UploadDialogProps) {
   const router = useRouter();
 
   const [open, setOpen] = useState(false);
-  const [files, setFiles] = useState<File[]>([]);
+  const [file, setFile] = useState<File | null>(null); // Diubah untuk satu file
   const [caption, setCaption] = useState("");
   const [folderId, setFolderId] = useState(selectedFolderId || "none");
   const [isUploading, setIsUploading] = useState(false);
@@ -50,18 +50,14 @@ export function UploadDialog({ folders, selectedFolderId }: UploadDialogProps) {
   const [error, setError] = useState<string | null>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = Array.from(e.target.files || []);
-    setFiles(selected);
+    const selectedFile = e.target.files?.[0] || null; // Mengambil hanya file pertama
+    setFile(selectedFile);
     setError(null);
   };
 
-  const removeFile = (idx: number) => {
-    setFiles((prev) => prev.filter((_, i) => i !== idx));
-  };
-
   const handleUpload = async () => {
-    if (files.length === 0) {
-      setError("Please select at least one file");
+    if (!file) {
+      setError("Please select a file");
       return;
     }
 
@@ -70,30 +66,36 @@ export function UploadDialog({ folders, selectedFolderId }: UploadDialogProps) {
     setUploadProgress(0);
 
     try {
-      for (const [index, file] of files.entries()) {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("caption", caption);
-        if (folderId !== "none") formData.append("folderId", folderId);
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("caption", caption);
+      if (folderId !== "none") formData.append("folderId", folderId);
 
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
+      // Membuat objek XMLHttpRequest untuk melacak kemajuan unggahan
+      const xhr = new XMLHttpRequest();
 
-        if (!res.ok) {
-          let msg = "Upload failed";
-          try {
-            const data = await res.json();
-            msg = data?.error || msg;
-          } catch {}
-          throw new Error(msg);
+      xhr.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) {
+          const progress = (event.loaded / event.total) * 100;
+          setUploadProgress(progress);
         }
+      });
 
-        setUploadProgress(((index + 1) / files.length) * 100);
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        let msg = "Upload failed";
+        try {
+          const data = await res.json();
+          msg = data?.error || msg;
+        } catch {}
+        throw new Error(msg);
       }
 
-      setFiles([]);
+      setFile(null); // Atur ulang file setelah unggahan berhasil
       setCaption("");
       setOpen(false);
       router.refresh();
@@ -116,58 +118,44 @@ export function UploadDialog({ folders, selectedFolderId }: UploadDialogProps) {
 
       <DialogContent className="w-[92vw] max-w-md">
         <DialogHeader>
-          <DialogTitle>Upload Photos &amp; Videos</DialogTitle>
+          <DialogTitle>Upload Photo &amp; Video</DialogTitle>
           <DialogDescription>
-            Add new memories to your BestTrio collection
+            Add a new memory to your BestTrio collection
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div>
-            <Label htmlFor="files">Select Files</Label>
+            <Label htmlFor="file">Select File</Label>
             <Input
-              id="files"
+              id="file"
               type="file"
-              multiple
               accept="image/*,video/*"
               onChange={handleFileSelect}
               className="mt-1"
             />
           </div>
 
-          {files.length > 0 && (
+          {file && (
             <div className="space-y-2">
-              <Label>Selected Files ({files.length})</Label>
-
-              {/* Simple, fixed-width rows that never overflow the dialog */}
-              <div className="max-h-40 w-full overflow-y-auto rounded-md border bg-white/50">
-                {files.map((file, index) => (
-                  <div
-                    key={`${index}`}
-                    className="flex w-full items-center justify-between gap-2 border-b p-2 last:border-b-0"
-                  >
-                    {/* Hide the real name: show generic label + lightweight meta only */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">
-                        Upload {index + 1}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {(file.size / (1024 * 1024)).toFixed(2)} MB
-                      </span>
-                    </div>
-
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeFile(index)}
-                      className="h-6 w-6 shrink-0"
-                      aria-label={`Remove upload ${index + 1}`}
-                    >
-                      <XIcon className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
+              <Label>Selected File</Label>
+              <div className="flex items-center justify-between gap-2 rounded-md border p-2 bg-white/50">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">{file.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {(file.size / (1024 * 1024)).toFixed(2)} MB
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setFile(null)}
+                  className="h-6 w-6 shrink-0"
+                  aria-label="Remove upload"
+                >
+                  <XIcon className="h-3 w-3" />
+                </Button>
               </div>
             </div>
           )}
@@ -176,7 +164,7 @@ export function UploadDialog({ folders, selectedFolderId }: UploadDialogProps) {
             <Label htmlFor="caption">Caption (Optional)</Label>
             <Textarea
               id="caption"
-              placeholder="Add a caption for your photos..."
+              placeholder="Add a caption for your photo..."
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
               className="mt-1"
@@ -205,9 +193,7 @@ export function UploadDialog({ folders, selectedFolderId }: UploadDialogProps) {
 
           {isUploading && (
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Uploading {files.length} file(s)...
-              </p>
+              <p className="text-sm text-muted-foreground">Uploading file...</p>
               <Progress value={uploadProgress} />
             </div>
           )}
@@ -224,7 +210,7 @@ export function UploadDialog({ folders, selectedFolderId }: UploadDialogProps) {
             </Button>
             <Button
               onClick={handleUpload}
-              disabled={isUploading || files.length === 0}
+              disabled={isUploading || !file}
               className="flex-1 bg-indigo-600 hover:bg-indigo-700"
             >
               {isUploading ? (
@@ -235,7 +221,7 @@ export function UploadDialog({ folders, selectedFolderId }: UploadDialogProps) {
               ) : (
                 <>
                   <UploadIcon className="mr-2 h-4 w-4" />
-                  Upload {files.length > 0 ? `(${files.length})` : ""}
+                  Upload
                 </>
               )}
             </Button>

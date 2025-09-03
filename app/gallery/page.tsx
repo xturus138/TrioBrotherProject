@@ -9,6 +9,7 @@ export default async function GalleryPage({
 }) {
   const supabase = await createClient();
   const params = await searchParams;
+  const selectedFolderId = params.folder;
 
   // Check if user is authenticated
   const {
@@ -32,8 +33,8 @@ export default async function GalleryPage({
     .select("*")
     .order("name");
 
-  // Ambil SEMUA aset, terlepas dari folder yang dipilih
-  const { data: assets } = await supabase
+  // Filter assets based on selectedFolderId
+  let query = supabase
     .from("assets")
     .select(
       `
@@ -44,12 +45,18 @@ export default async function GalleryPage({
     )
     .order("created_at", { ascending: false });
 
+  if (selectedFolderId) {
+    query = query.eq("folder_id", selectedFolderId);
+  }
+
+  const { data: assets } = await query;
+
   return (
     <GalleryView
       currentUser={userData}
       folders={folders || []}
       assets={assets || []}
-      selectedFolderId={params.folder}
+      selectedFolderId={selectedFolderId}
     />
   );
 }
